@@ -28,33 +28,18 @@ while True:
 
     ret, frame = cap.read()
 
-    cv2.putText(frame, "CERE", (10, 200), cv2.FONT_HERSHEY_PLAIN, 5, (0, 0, 0), 5, cv2.LINE_8)
+    frame = cv2.resize(frame, (240, 180))
+    frame = cv2.bilateralFilter(frame, 9, 120, 120)
 
-    lower = np.array([lowH, lowV, lowS])
-    upper = np.array([upH, upV, upS])
+    lower = np.array([lowH, lowS, lowV])
+    upper = np.array([upH, upS, upV])
 
     hvs = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(hvs, lower, upper)
     res = cv2.bitwise_and(frame, frame, mask=mask)
 
-    M = cv2.moments(mask)
-    if (M["m00"] != 0):
-        x = int(M["m10"] / M["m00"])
-        y = int(M["m01"] / M["m00"])
-
-        print(x, y)
-    else:
-        print("Not found")
-
-    ret, thresh = cv2.threshold(mask, 127, 255, 0)
-    img2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    cv2.drawContours(mask, contours, -1, (0, 255, 0), 3)
-
     cv2.imshow("frame", frame)
-    cv2.imshow("res", res)
     cv2.imshow("mask", mask)
-    cv2.imshow("grey", hvs)
 
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
