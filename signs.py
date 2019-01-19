@@ -48,6 +48,7 @@ STR_COLOR_GREEN = 'green'
 STR_COLOR_RED = 'red'
 STR_COLOR_WHITE = 'white'
 STR_COLOR_BLUE = 'blue'
+STR_COLOR_BACKGROUND = 'background'
 
 COLOR_BLACK = (0, 0, 0)
 COLOR_GREEN = (0, 255, 0)
@@ -74,9 +75,17 @@ templates = {name: cv2.cvtColor(cv2.imread(getPath(name)), cv2.COLOR_BGR2GRAY) f
 
 # Указываем цветовые диапазоны для знаков
 MANUAL_COLORS = True
+BACKGROUND_ENABLE = True
 colors = {}
 
-if MANUAL_COLORS:
+if BACKGROUND_ENABLE:
+    upHSV = [255, 28, 255]
+    lowHSV = [49, 4, 132]
+    colors[STR_COLOR_BACKGROUND] = (lowHSV, upHSV)
+# Background color
+
+
+if MANUAL_COLORS and not BACKGROUND_ENABLE:
     # Красный
     upHSV = [197, 255, 255]
     lowHSV = [0, 97, 91]
@@ -120,16 +129,20 @@ while True:
         mask = cv2.inRange(hvs, np.array(colors[color][0]), np.array(colors[color][1]))
 
         ret, thresh = cv2.threshold(mask, 127, 255, cv2.THRESH_TOZERO)
-        im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if BACKGROUND_ENABLE:
+            im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        else:
+            im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         contours = [contour for contour in contours if cv2.contourArea(contour) > 200]
         hull = [cv2.convexHull(contours[i], False) for i in range(len(contours))]
 
-        cv2.drawContours(log, hull, -1, tuple(colors[color][0]), -1)
+        for h in hull:
+            cv2.drawContours(log, h, -1, tuple(colors[color][0]), -1)
 
         for i in range(len(contours)):
             crop = np.zeros_like(frame)  # Create mask where white is what we want, black otherwise
-            cv2.drawContours(crop, contours, i, 255, -1)  # Draw filled contour in mask
+            cv2.drawContours(crop, hull, i, 255, -1)  # Draw filled contour in mask
             out = np.zeros_like(frame)  # Extract out the object and place into output image
             out[crop == 255] = frame[crop == 255]
 
