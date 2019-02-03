@@ -4,6 +4,7 @@ import color_utills as cu
 from colorthief import ColorThief
 
 
+# Функция детектирует совпадают ли цвета знака с предсказанным
 def colors_match(img, predicted):
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     col_tmp = set()
@@ -34,22 +35,26 @@ def get_dominant_color(path):
             return color
 
 
+# Изменяет изображение по заданным параметрам (возвращает измененное изображение)
 def standartize_image(image):
     image = cv2.resize(image, (64, 64))
     # image = cv2.cvtColor(image, method)
     return image
 
 
+# Возвращает словарь {имя знака: совпадение в процентах}
 def get_matches(img):
     return {tpl: cv2.matchTemplate(standartize_image(img), standartize_image(templates[tpl]), cv2.TM_CCOEFF_NORMED) for
             tpl in
             templates.keys()}
 
 
+# возвращает массив с пороговой точностью
 def drop_accuracy(arr, accuracy):
     return [a for a in arr.items if a[1] > accuracy]
 
 
+# возвращает фигуру контура
 def get_shape(c):
     peri = cv2.arcLength(c, True)
     approx = cv2.approxPolyDP(c, 0.04 * peri, True)
@@ -124,6 +129,8 @@ colors[STR_COLOR_BLUE] = cu.get_color(STR_COLOR_BLUE)
 # Создаем массив цветов дорожных знаков
 
 MIN_ACCURACY = 0.4
+PERFECT_ACCURACY = 0.55  # такая точность, при которой можно сказать, что это точно знак (игнорируется форма!)
+MIN_CONTOUR_AREA = 400
 
 
 def get_sign(frame):
@@ -145,7 +152,7 @@ def get_sign(frame):
         for mask in masks:
             ret, thresh = cv2.threshold(mask, 127, 255, cv2.THRESH_TOZERO)
             contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            contours = [contour for contour in contours if cv2.contourArea(contour) > 400]
+            contours = [contour for contour in contours if cv2.contourArea(contour) > MIN_CONTOUR_AREA]
             hull = [cv2.convexHull(contours[i], False) for i in range(len(contours))]
 
             for e in hull:
@@ -154,7 +161,7 @@ def get_sign(frame):
                 out = standartize_image(crop)
                 matches = get_matches(out)
                 matches = [m for m in matches.items() if m[1] > MIN_ACCURACY if colors_match(out, m) if
-                           get_shape(e) == tags[m[0]][FORM] or m[1] > 0.55]
+                           get_shape(e) == tags[m[0]][FORM] or m[1] > PERFECT_ACCURACY]
                 if matches:
                     return max(matches, key=lambda x: x[1])[0]
 
